@@ -66,7 +66,38 @@ class Tile:
     def update(self):
         pass
 
-    def draw(self, surface, offset=(0, 0)):
+    def draw(self, surface, offset:Vec2=None):
+        if offset is None:
+            blit_pos = (
+                self.pos.elementwise() * self.tilesize.elementwise()
+            )
+        else:
+            blit_pos = (
+                offset.elementwise() * self.tilesize.elementwise()
+            )
+        if self.x <= -1 or blit_pos[0] > surface.get_width():
+            return
+        if self.y <= -1 or blit_pos[1] > surface.get_height():
+            return
+        if self.index == -1:
+            pygame.draw.rect(
+                surface,
+                self.color,
+                pygame.Rect(
+                    blit_pos, self.tilesize
+                ),
+            )
+        else:
+            pygame.draw.rect(
+                surface,
+                pygame.Color(0,0,0,0),
+                pygame.Rect(
+                    blit_pos, self.tilesize
+                ),
+            )
+            surface.blit(self.image, blit_pos, pygame.Rect(Vec2(self.__rect.topleft).elementwise() / self.scaling_factor, self.tilesize))
+
+    def draw_scaled(self, surface, offset=(0, 0)):
         blit_pos = (
             self.pos.elementwise() * self.tilesize.elementwise() * self.scaling_factor
             + offset
@@ -252,7 +283,7 @@ if __name__ == "__main__":
 
         screen.fill((0, 0, 0))
         for tile in tiles:
-            tile.draw(screen, offset)
+            tile.draw_scaled(screen, offset)
 
         pygame.display.flip()
         clock.tick(60)
