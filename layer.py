@@ -1,6 +1,7 @@
 import pygame
 from pygame.locals import *
 from pygame.math import Vector2 as Vec2
+import random
 
 from tile import Tile
 
@@ -19,13 +20,13 @@ class Layer:
         self.offset = offset
         self.place_holder_tile = Tile(Vec2(0, 0), 2, self.color, self.tileset, self.tilesize, self.tilemargin, self.tilespacing, self.scaling_factor)
         self.__rect = pygame.Rect(self.pos, self.size.elementwise() * self.tilesize.elementwise())
-        self.__surf = pygame.Surface(self.__rect.size)
+        self.__surf = pygame.Surface(self.__rect.size, pygame.SRCALPHA)
         self.__scaled_surf = pygame.transform.scale_by(self.__surf, self.scaling_factor)
         
     def draw(self, surface:pygame.Surface, offset:Vec2=None):
         if offset is None:
             offset = self.offset
-        surface.blit(self.__scaled_surf, self.pos + offset)
+        surface.blit(self.__scaled_surf, self.pos + offset,)
         if self.active:
             vec_mouse = Vec2(pygame.mouse.get_pos())-offset
             tile_size = self.tilesize.elementwise() * self.scaling_factor
@@ -41,10 +42,15 @@ class Layer:
             tile.draw(self.__surf, pos)
         self.render_scaled_surf()
 
+    def solid_fill(self):
+        for i in range(int(self.size.x)):
+            for j in range(int(self.size.y)):
+                self.draw_tile(Tile(Vec2(i, j), 16, self.color, self.tileset, self.tilesize, self.tilemargin, self.tilespacing, self.scaling_factor))
+
     def random_fill(self):
         for i in range(int(self.size.x)):
             for j in range(int(self.size.y)):
-                self.draw_tile(Tile(Vec2(i, j), 2, self.color, self.tileset, self.tilesize, self.tilemargin, self.tilespacing, self.scaling_factor))
+                self.draw_tile(Tile(Vec2(i, j), random.randint(0, 49), self.color, self.tileset, self.tilesize, self.tilemargin, self.tilespacing, self.scaling_factor))
 
     def update(self):
         pass
@@ -55,6 +61,7 @@ class Layer:
     
     @scaling_factor.setter
     def scaling_factor(self, value):
+        value = max(0.01, value)
         self._scaling_factor = value
         self.place_holder_tile.scaling_factor = value
         self.render_scaled_surf()
@@ -94,43 +101,66 @@ if __name__ == "__main__":
     drag = False
     click_pos = Vec2(0, 0)
     offset = Vec2(0, 0)
-    buildings = pygame.image.load(
-        "assets\\Source\\Universal\\Universal-Buildings-and-walls.png"
+    rock = pygame.image.load(
+        "assets\\Biome\\Foreground\\Textured\\Rock.png"
     )
-    layer = Layer(Vec2(0, 0), Vec2(40,40), Vec2(16,16), Vec2(0,0), Vec2(0,0), scale, pygame.Color(0, 0, 0, 0), buildings, Vec2(0), True)
-    layer.random_fill()
-    layer.selected_index = 5
+    sand = pygame.image.load(
+        "assets\\Biome\\Foreground\\Textured\\Sand.png"
+    )
+    layers = [
+        Layer(Vec2(0, 0), Vec2(40,40), Vec2(16,16), Vec2(0,0), Vec2(0,0), scale, pygame.Color(0, 0, 0, 0), rock, Vec2(0)),
+        Layer(Vec2(0, 0), Vec2(40,40), Vec2(16,16), Vec2(0,0), Vec2(0,0), scale, pygame.Color(0, 0, 0, 0), sand, Vec2(0))
+    ]
+    for layer in layers:
+        layer.selected_index = 26
+    
+    layers[0].solid_fill()
+    layers[1].random_fill()
+    
+    
+    selected_layer = 1
+    layers[selected_layer].active = True
+    
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEWHEEL:
                 scale += event.y * 0.1
-                layer.scaling_factor = scale
+                for layer in layers:
+                    layer.scaling_factor = scale
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     drag = True
                 elif event.button == 3:
-                    layer.add_tile()
+                    layers[selected_layer].add_tile()
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
                     drag = False
             elif event.type == pygame.MOUSEMOTION:
                 if drag:
                     offset += Vec2(event.rel)
-                    layer.offset = offset
+                    for layer in layers:
+                        layer.offset = offset
             elif event.type == pygame.KEYDOWN:
                 if event.key == K_SPACE:
-                    layer.active = not layer.active
+                    selected_layer = (selected_layer + 1) % len(layers)
+                    for layer in layers:
+                        layer.active = False
+                    layers[selected_layer].active = True
+                    
                 elif event.key == K_UP:
-                    layer.selected_index += 1
+                    layers[selected_layer].selected_index += 1
+                    
                 elif event.key == K_DOWN:
-                    layer.selected_index -= 1
-
-        layer.update()
+                    layers[selected_layer].selected_index -= 1
+                    
+        for layer in layers:
+            layer.update()
 
         screen.fill((0, 0, 0))
-        layer.draw(screen)
+        for layer in layers:
+            layer.draw(screen)
 
         pygame.display.flip()
         clock.tick(60)
