@@ -4,21 +4,18 @@ from pygame.math import Vector2 as Vec2
 import random
 
 from tile import Tile
+from tileset import TilesetProperties
 
 class Layer:
         
-    def __init__(self, pos:Vec2, size:Vec2, tilesize:Vec2, tilemargin:Vec2, tilespacing:Vec2, scaling_factor:float, color:pygame.Color, tileset:pygame.Surface, offset:Vec2=Vec2(0,0), active:bool=False):
+    def __init__(self, pos:Vec2, size:Vec2, tileset_properties:TilesetProperties=None, scaling_factor:float=None, offset:Vec2=Vec2(0,0), active:bool=False):
         self.pos = pos
         self.size = size
-        self.tilesize = tilesize
-        self.tilemargin = tilemargin
-        self.tilespacing = tilespacing
-        self._scaling_factor = scaling_factor   
-        self.tileset = tileset
-        self.color = color
+        self.tileset_properties = tileset_properties if tileset_properties else Tile.default_tileset_properties
+        self._scaling_factor = scaling_factor if scaling_factor else Tile.default_scaling_factor   
         self.active = active
         self.offset = offset
-        self.place_holder_tile = Tile(Vec2(0, 0), 2, self.color, self.tileset, self.tilesize, self.tilemargin, self.tilespacing, self.scaling_factor)
+        self.place_holder_tile = Tile(Vec2(0, 0), 2, self.tileset_properties, self.scaling_factor)
         self.__rect = pygame.Rect(self.pos, self.size.elementwise() * self.tilesize.elementwise())
         self.__surf = pygame.Surface(self.__rect.size, pygame.SRCALPHA)
         self.__scaled_surf = pygame.transform.scale_by(self.__surf, self.scaling_factor)
@@ -45,12 +42,12 @@ class Layer:
     def solid_fill(self):
         for i in range(int(self.size.x)):
             for j in range(int(self.size.y)):
-                self.draw_tile(Tile(Vec2(i, j), 16, self.color, self.tileset, self.tilesize, self.tilemargin, self.tilespacing, self.scaling_factor))
+                self.draw_tile(Tile(Vec2(i, j), 16, self.tileset_properties, self.scaling_factor))
 
     def random_fill(self):
         for i in range(int(self.size.x)):
             for j in range(int(self.size.y)):
-                self.draw_tile(Tile(Vec2(i, j), random.randint(0, 49), self.color, self.tileset, self.tilesize, self.tilemargin, self.tilespacing, self.scaling_factor))
+                self.draw_tile(Tile(Vec2(i, j), random.randint(0, 49), self.tileset_properties, self.scaling_factor))
 
     def update(self):
         pass
@@ -86,9 +83,14 @@ class Layer:
             vec_mouse = Vec2(pygame.mouse.get_pos())-offset
             tile_size = self.tilesize.elementwise() * self.scaling_factor
             placeholder_pos = ((vec_mouse - \
-                vec_mouse.elementwise() % tile_size).elementwise() / self.scaling_factor).elementwise() // self.tilesize
-            
+                    vec_mouse.elementwise() % tile_size).elementwise() / self.scaling_factor \
+                ).elementwise() // self.tilesize
+        
             self.draw_tile(self.place_holder_tile,pos=placeholder_pos)
+
+    @property
+    def tilesize(self):
+        return self.tileset_properties.tilesize
 
 if __name__ == "__main__":
     pygame.init()
@@ -107,10 +109,13 @@ if __name__ == "__main__":
     sand = pygame.image.load(
         "assets\\Biome\\Foreground\\Textured\\Sand.png"
     )
+    tileset1 = TilesetProperties("Rock", Vec2(16, 16), Vec2(0, 0), Vec2(0, 0), rock, pygame.Color(0, 0, 0, 0))
+    tileset2 = TilesetProperties("Sand", Vec2(16, 16), Vec2(0, 0), Vec2(0, 0), sand, pygame.Color(0, 0, 0, 0))
     layers = [
-        Layer(Vec2(0, 0), Vec2(40,40), Vec2(16,16), Vec2(0,0), Vec2(0,0), scale, pygame.Color(0, 0, 0, 0), rock, Vec2(0)),
-        Layer(Vec2(0, 0), Vec2(40,40), Vec2(16,16), Vec2(0,0), Vec2(0,0), scale, pygame.Color(0, 0, 0, 0), sand, Vec2(0))
+        Layer(Vec2(0, 0), Vec2(40,40), tileset1, offset=Vec2(0)),
+        Layer(Vec2(0, 0), Vec2(40,40), tileset2, offset=Vec2(0))
     ]
+    
     for layer in layers:
         layer.selected_index = 26
     

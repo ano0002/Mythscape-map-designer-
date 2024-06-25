@@ -86,14 +86,10 @@ class Map:
             layer = Layer(
                 pos=Vec2(0,0),
                 size=self.size,
-                tilesize=tileset.tilesize,
-                tilemargin=tileset.tilemargin,
-                tilespacing=tileset.tilespacing,
                 scaling_factor=self.display_scale,
-                color=pygame.Color(0,0,0,0),
-                tileset=tileset.tileset,
                 offset=self.display_offset,
-                active=active
+                active=active,
+                tileset_properties=tileset
             )
             layer.selected_index = 16
         if index == -1:

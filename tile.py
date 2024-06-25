@@ -2,6 +2,7 @@ import pygame
 from pygame.math import Vector2 as Vec2
 from functools import lru_cache
 
+from tileset import TilesetProperties,get_tile_top_left
 
 @lru_cache
 def scale_with_cache(surface, factor):
@@ -9,49 +10,28 @@ def scale_with_cache(surface, factor):
 
 
 class Tile:
-    default_size = Vec2(16, 16)
-    default_color = pygame.Color(0, 0, 0)
-    default_image = pygame.Surface(default_size)
-    default_image.fill((0, 255, 0))
-    default_margin = Vec2(0, 0)
-    default_spacing = Vec2(0, 0)
+    default_tileset_properties = TilesetProperties(
+        name="default",
+        tilesize=Vec2(16, 16),
+        tilemargin=Vec2(0, 0),
+        tilespacing=Vec2(0, 0),
+        tileset=pygame.Surface((16, 16)),
+        color=pygame.Color(255, 0, 0),
+    )
     default_scaling_factor = 1
 
     def __init__(
         self,
         pos,
         index: int = 0,
-        color: tuple = False,
-        image: pygame.Surface = False,
-        tilesize: Vec2 = False,
-        tilemargin: Vec2 = False,
-        tilespacing: Vec2 = False,
-        scaling_factor: float = False,
+        tileset_properties: TilesetProperties = None,
+        scaling_factor: float = None,
     ):
         super().__init__()
 
-        self.color = color if color else self.default_color
-
-        self._image = image if image else self.default_image
         self.pos = pos
 
-        self._tilesize = tilesize if tilesize else self.default_size
-
-        self._tilemargin = tilemargin if tilemargin else self.default_margin
-
-        self._tilespacing = tilespacing if tilespacing else self.default_spacing
-
-        self.__offset_by_tile = self.tilesize + self.tilespacing
-
-        self.__tile_by_line = (
-            self.image.get_width() - self.tilemargin[0] * 2
-        ) // self.__offset_by_tile.x
-
-        self.__tile_count = (
-            self.__tile_by_line
-            * (self.image.get_height() - self.tilemargin[1] * 2)
-            // self.__offset_by_tile.y
-        )
+        self.tileset_properties = tileset_properties if tileset_properties else self.default_tileset_properties
 
         self._scaling_factor = (
             scaling_factor if scaling_factor else self.default_scaling_factor
@@ -126,60 +106,49 @@ class Tile:
         return self.pos.y
 
     @property
+    def color(self):
+        return self.tileset_properties.color
+    
+    @color.setter
+    def color(self, value):
+        self.tileset_properties.color = value
+
+    @property
     def image(self):
-        return self._image
+        return self.tileset_properties.tileset
 
     @image.setter
     def image(self, value):
-        self._image = value
+        self.tileset_properties.tileset = value
         self.__scaled_image = scale_with_cache(self.image, self.scaling_factor)
-        self.__tile_by_line = (
-            self.image.get_width() - self.tilemargin[0] * 2
-        ) // self.__offset_by_tile.x
-        self.__tile_count = (
-            self.__tile_by_line
-            * (self.image.get_height() - self.tilemargin[1] * 2)
-            // self.__offset_by_tile.y
-        )
         self.__update_rect()
 
     @property
     def tilesize(self):
-        return self._tilesize
+        return self.tileset_properties.tilesize
 
     @tilesize.setter
     def tilesize(self, value):
-        self._tilesize = value
-        self.__offset_by_tile = self.tilesize + self.tilespacing
-        self.__tile_by_line = (
-            self.image.get_width() - self.tilemargin[0] * 2
-        ) // self.__offset_by_tile.x
+        self.tileset_properties.tilesize = value
         self.__rect.size = self.tilesize * self.scaling_factor
         self.__update_rect()
 
     @property
     def tilemargin(self):
-        return self._tilemargin
+        return self.tileset_properties.tilemargin
 
     @tilemargin.setter
     def tilemargin(self, value):
-        self._tilemargin = value
-        self.__tile_by_line = (
-            self.image.get_width() - self.tilemargin[0] * 2
-        ) // self.__offset_by_tile.x
+        self.tileset_properties.tilemargin = value
         self.__update_rect()
 
     @property
     def tilespacing(self):
-        return self._tilespacing
+        return self.tileset_properties.tilespacing
 
     @tilespacing.setter
     def tilespacing(self, value):
-        self._tilespacing = value
-        self.__offset_by_tile = self.tilesize + self.tilespacing
-        self.__tile_by_line = (
-            self.image.get_width() - self.tilemargin[0] * 2
-        ) // self.__offset_by_tile.x
+        self.tileset_properties.tilespacing = value
         self.__update_rect()
 
     @property
@@ -204,24 +173,11 @@ class Tile:
         if value == -1:
             self._index = -1
         else:
-            self._index = value % self.__tile_count
+            self._index = value % self.tileset_properties.tile_count
             self.__update_rect()
 
     def __update_rect(self):
-        self.__tile_count = (
-            self.__tile_by_line
-            * (self.image.get_height() - self.tilemargin[1] * 2)
-            // self.__offset_by_tile.y
-        )
-
-        pos_on_tileset = Vec2(
-            self.index % self.__tile_by_line, self.index // self.__tile_by_line
-        )
-
-        top_left = (
-            self.tilemargin
-            + self.__offset_by_tile.elementwise() * pos_on_tileset.elementwise()
-        ) * self.scaling_factor
+        top_left = get_tile_top_left(self.tileset_properties, self.index) * self.scaling_factor
         self.__rect.topleft = top_left
 
 
@@ -243,13 +199,29 @@ if __name__ == "__main__":
     buildings = pygame.image.load(
         "assets\\Source\\Universal\\Universal-Buildings-and-walls.png"
     )
+    tileset1 = TilesetProperties(
+        name="nature",
+        tilesize=Vec2(16, 16),
+        tilemargin=Vec2(0, 0),
+        tilespacing=Vec2(0, 0),
+        tileset=nature,
+        color=pygame.Color(255, 0, 0),
+    )
+    tileset2 = TilesetProperties(
+        name="buildings",
+        tilesize=Vec2(16, 16),
+        tilemargin=Vec2(0, 0),
+        tilespacing=Vec2(0, 0),
+        tileset=buildings,
+        color=pygame.Color(255, 0, 0),
+    )
     nb_tiles_x = round((screen.get_width() / 16 + 0.5) * (1 / scale))
     nb_tiles_y = round((screen.get_height() / 16 + 0.5) * (1 / scale))
     tiles = [
         Tile(
             pos=Vec2(i, j),
             index=i + j * nb_tiles_x,
-            image=random.choice((nature, buildings)),
+            tileset_properties=random.choice([tileset1, tileset2]),
             scaling_factor=scale,
         )
         for i in range(nb_tiles_x)
