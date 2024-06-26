@@ -1,4 +1,6 @@
 import math
+from typing import Callable
+
 import pygame
 from pygame.locals import *
 from pygame.math import Vector2 as Vec2
@@ -16,7 +18,7 @@ class TileButton(Button):
         rect,
         border_width: int = 1,
         border_color: pygame.Color = pygame.Color(0, 0, 0),
-        callback=lambda x: setattr(x, "active", not x.active),
+        callback:Callable=lambda x: setattr(x, "active", not x.active), # type: ignore
         active=False,
         **kwargs
     ):
@@ -30,7 +32,7 @@ class TileButton(Button):
 
         self.image = pygame.transform.scale(self.unscaled_src, self.rect.size)
         self.h_image = pygame.transform.scale(self.unscaled_src, self.rect.size)
-        self.h_image.fill(pygame.Color(120, 120, 120), special_flags=BLEND_RGBA_MULT)
+        self.h_image.fill(pygame.Color(45,45,45,0), special_flags=BLEND_RGBA_ADD)
         self.a_image = pygame.transform.scale(self.unscaled_src, self.rect.size)
 
         for key, value in kwargs.items():
@@ -42,7 +44,7 @@ class TileButton(Button):
         self.draw_borders()
 
     def draw_borders(self):
-        self.a_image = self.image.copy()
+        self.a_image = self.h_image.copy()
         pygame.draw.rect(
             self.a_image, self.border_color, Rect(0, 0, self.rect.width, self.border_width)
         )
@@ -73,21 +75,37 @@ class TileButton(Button):
 
 class TilePicker:
     def __init__(
-        self, rect: pygame.Rect, tileset: TilesetProperties, current: int = 0, **kwargs
+        self, 
+        rect: pygame.Rect, 
+        tileset: TilesetProperties, 
+        current: int = 0, 
+        background_color:pygame.Color=pygame.Color(90,90,90), 
+        callback:Callable=lambda x:None, 
+        **kwargs
     ):
         self._rect = rect
         self.tileset = tileset
         self.current = current
         self.tile_buttons = []
+        self.background_color = background_color
         self.surf = pygame.Surface(self.rect.size)
-
+        self.surf.fill(self.background_color)
+        self.callback = callback
+        
         for key, value in kwargs.items():
             setattr(self, key, value)
+
 
         self.get_max_tile_btn_scale()
         self.create_tiles()
 
     def create_tiles(self):
+        stored_current = self.value
+        
+        def button_clicked(button):
+            parent=button.parent
+            parent.value = button.tile_index
+            
         for btn in self.tile_buttons:
            del btn
         self.tile_buttons = []
@@ -95,7 +113,13 @@ class TilePicker:
         for i in range(self.tileset.tile_count):
             pos = Vec2(i % self.tile_by_line, i // self.tile_by_line).elementwise() * adjusted_tilesize + self.rect.topleft
             btn = TileButton(
-                self.tileset, i, pygame.Rect(pos, adjusted_tilesize), border_width=2
+                tileset=self.tileset, 
+                tile_index=i, 
+                rect=pygame.Rect(pos, adjusted_tilesize), 
+                border_width=1,
+                parent=self,
+                callback=button_clicked,
+                active=i == stored_current
             )
             self.tile_buttons.append(btn)
 
@@ -145,8 +169,10 @@ class TilePicker:
             btn.update()
 
     def on_click(self):
-        for btn in self.tile_buttons:
-            btn.on_click()
+        for i,btn in enumerate(self.tile_buttons):
+            if btn.on_click():
+                self.current = i
+                self.callback(self)
 
     def draw(self, surface):
         surface.blit(self.surf, self.rect)
@@ -171,8 +197,21 @@ class TilePicker:
             raise ValueError("Width and height must be greater than 0")
         self._rect = value
         self.surf = pygame.Surface(self.rect.size)
+        self.surf.fill(self.background_color)
         self.get_max_tile_btn_scale()
         self.create_tiles()
+
+    @property
+    def value(self):
+        return self.current
+
+    @value.setter
+    def value(self, value):
+        self.current = value
+        for btn in self.tile_buttons:
+            btn.active = False
+        self.tile_buttons[self.current].active = True
+    
 
 if __name__ == "__main__":
 
@@ -194,14 +233,16 @@ if __name__ == "__main__":
 
     tile_button = TileButton(tileset, 16, Rect(0, 0, 64, 64), border_width=4)
 
-    tile_picker = TilePicker(Rect(64, 64, 10 * 32 + 2, 5 * 32), tileset)
+    tile_picker = TilePicker(
+        Rect(64, 64, 10 * 32 + 2, 5 * 32), 
+        tileset,
+        callback=lambda x: print(x.value)
+    )
     tile_picker.get_max_tile_btn_scale()
-
-    print(tile_picker.factor)
 
     running = True
     while running:
-        screen.fill((255, 0, 0))
+        screen.fill((0, 0, 0))
         for event in pygame.event.get():
             if event.type == QUIT:
                 running = False
@@ -212,7 +253,7 @@ if __name__ == "__main__":
             elif event.type == MOUSEMOTION:
                 if event.buttons[2]:
                     tile_picker.rect = Rect(tile_picker.rect.topleft, (max(event.pos[0] - tile_picker.rect.left,1), max(event.pos[1] - tile_picker.rect.top,1)))
-                    
+
         tile_button.update()
         tile_button.draw(screen)
 

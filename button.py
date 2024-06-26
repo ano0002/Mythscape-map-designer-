@@ -18,7 +18,7 @@ class Button:
         for key, value in kwargs.items():
             setattr(self, key, value)
   
-    def on_click(self):
+    def on_click(self) -> bool:
         if self.hovered:
             self.callback(self)
             return True
