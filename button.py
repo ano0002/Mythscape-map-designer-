@@ -84,6 +84,43 @@ class TextButton(Button):
         self.image.fill(self.bg_color, self.image.get_rect().inflate(-self.border_width*2, -self.border_width*2))
         text = self.font.render(self.text, True, self.text_color)            
         self.image.blit(text, text.get_rect(center=self.image.get_rect().center))
+ 
+
+class ImgButton(Button):
+    def __init__(self, 
+                 img, 
+                 rect, 
+                 h_img=None, 
+                 callback=lambda x: None, 
+                 bg_color:pygame.Color=pygame.Color(32,32,32),
+                 h_bg_color:pygame.Color=pygame.Color(45,45,45),
+                 spacing:Vec2=Vec2(0, 0),
+                 **kwargs):
+        super().__init__(rect, callback=callback)
+        
+        self.image = img
+        self.h_image = h_img if h_img else img
+        self.rect = rect
+        self.bg_color = bg_color
+        self.h_bg_color = h_bg_color
+        self.spacing = spacing
+        
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        
+        self.recalculate_bounds()
+  
+    def recalculate_bounds(self):
+        self.image = pygame.transform.scale(self.image, Vec2(self.rect.size) - self.spacing*2)
+        self.h_image = pygame.transform.scale(self.h_image, Vec2(self.rect.size) - self.spacing*2)
+    
+    def draw(self, surface):
+        if self.hovered:
+            surface.fill(self.h_bg_color, self.rect)
+            surface.blit(self.h_image, self.h_image.get_rect(center=self.rect.center))
+        else:
+            surface.fill(self.bg_color, self.rect)
+            surface.blit(self.image, self.image.get_rect(center=self.rect.center))
   
 if __name__ == "__main__":
     pygame.init()
@@ -98,7 +135,14 @@ if __name__ == "__main__":
             callback=lambda b: print(f"Clicked on: {b.c};{b.l}"), 
             l=i,
             c=j
-        ) for i in range(8) for j in range(10)]
+        ) for i in range(8) for j in range(5)]
+    
+    img_button = ImgButton(
+        img=pygame.image.load("assets/UI/cursor.png"),
+        rect=pygame.Rect(400, 300, 100, 100),
+        callback=lambda b: print("Clicked on image button"),
+        spacing=Vec2(10, 10)
+    )
     
     running = True
     while running:
@@ -111,8 +155,11 @@ if __name__ == "__main__":
                     for button in buttons:
                         if button.on_click():
                             break
+                    img_button.on_click()
         for button in buttons:
             button.update()
             button.draw(screen)
+        img_button.update()
+        img_button.draw(screen)
         pygame.display.flip()
         clock.tick(60)
