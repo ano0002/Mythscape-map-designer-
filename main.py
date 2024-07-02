@@ -31,6 +31,21 @@ class Main():
         
         self.config_file = config_file
         
+        self.top_toolbar_actions = {
+            "New": self.new_map,
+            "Open": self.open_map,
+            "Save": self.save_map,
+            "Save As": self.save_as_map,
+            "Export": self.export_map,
+        }
+        self.tools = {
+            "brush": 0,
+            "eraser": 1,
+            "bucket": 2,
+            "cursor": 3
+        }
+        
+        
         self.setup()
     
     
@@ -50,12 +65,12 @@ class Main():
         # Top toolbar
         top_btn_width = 80
         top_btn_height = 30
-        for i, name in enumerate(["New", "Open", "Save", "Save As", "Export", "Import"]):
+        for i, name in enumerate(self.top_toolbar_actions.keys()):
             self.ui.append(TextButton(
                 font=self.font,
                 text=name,
                 rect=pygame.Rect(i*top_btn_width, 0, top_btn_width, top_btn_height),
-                callback=self.toolbar_callback,
+                callback=self.top_toolbar_actions[name],
                 text_color=self.text_color,
                 h_text_color=self.text_color,
                 bg_color=self.bg_color,
@@ -69,20 +84,21 @@ class Main():
         btn_spacing = 0
         btn_side = 40
         fill=btn_side*(1/4)
-        for i, name in enumerate(["cursor", "brush", "bucket"]):
+        for i, name in enumerate(self.tools.keys()):
             self.ui.append(ImgButton(
                 img=pygame.image.load(f"Assets/UI/{name}.png"),
                 rect=pygame.Rect(i*(btn_side+btn_spacing)+btn_margin.x, top_btn_height+btn_margin.y, btn_side, btn_side),
-                callback=self.toolbar_callback,
+                callback=self.tool_select_callback,
                 spacing=Vec2(fill, fill),
                 bg_color=self.bg_color,
                 h_bg_color=self.h_bg_color,
+                name=name
                 ))
     def setup_map(self):
         pass
     
-    def toolbar_callback(self, button):
-        print(f"Clicked on: {button.text}")
+    def tool_select_callback(self, button):
+        print(f"Clicked on: {button.name}")
     
     def run(self):
         self.running = True
@@ -106,7 +122,10 @@ class Main():
                         self.display = pygame.display.set_mode(self.windowed_size, RESIZABLE)
                     else:
                         self.display = pygame.display.set_mode(self.screen_size, FULLSCREEN)
-            
+            elif event.type == MOUSEBUTTONDOWN:
+                for ui in self.ui:
+                    if ui.on_click():
+                        break
         
         
     def update(self):
@@ -121,6 +140,22 @@ class Main():
             self.maps[self.current_map_index].draw(self.display)
         for ui in self.ui:
             ui.draw(self.display)
+    
+    def new_map(self,b):
+        pass
+    
+    def open_map(self,b):
+        pass
+    
+    def save_map(self,b):
+        pass
+    
+    def save_as_map(self,b):
+        pass
+    
+    def export_map(self,b):
+        pass
+        
     
     
 if __name__ == "__main__":
